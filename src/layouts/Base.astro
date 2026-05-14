@@ -1,0 +1,55 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+  </head>
+  <body class="min-h-screen flex flex-col">
+    <header class="border-b border-line bg-paper">
+      <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="/" class="text-ink font-medium tracking-tight">glue-review</a>
+        <nav class="flex items-center gap-6 text-sm text-ink-soft">
+          <a href="#install" class="hover:text-ink">Install</a>
+          <a href="#evidence" class="hover:text-ink">Eval</a>
+          <a href="https://github.com/erain/glue/tree/main/agents/glue-review" class="hover:text-ink" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+    <main class="flex-1">
+      <slot />
+    </main>
+    <footer class="border-t border-line mt-24">
+      <div class="max-w-3xl mx-auto px-6 py-10 text-sm text-ink-soft flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <a href="https://github.com/erain/glue" class="text-ink-soft hover:text-ink" rel="noopener">glue</a>
+          {" · "}
+          <a href="https://github.com/erain/glue/tree/main/agents/glue-review" class="text-ink-soft hover:text-ink" rel="noopener">glue-review</a>
+          {" · "}
+          <a href="https://github.com/erain/glue-review-eval" class="text-ink-soft hover:text-ink" rel="noopener">eval</a>
+          {" · "}
+          MIT
+        </div>
+        <div class="text-ink-muted">Built on the open <span class="text-ink-soft">glue</span> agent harness.</div>
+      </div>
+    </footer>
+  </body>
+</html>

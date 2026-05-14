@@ -1,0 +1,397 @@
+---
+import Base from "../layouts/Base.astro";
+import Section from "../components/Section.astro";
+
+const title = "glue-review — AI code review for AI coding agents";
+const description =
+  "One GitHub comment per PR. A short headline, severity bullets, and a paste-ready fix block your coding agent applies in one step. Open source, runs on your own LLM key.";
+
+const installSnippet = `# .github/workflows/glue-review.yml
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: \${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: erain/glue/agents/glue-review@main
+        with:
+          openrouter-api-key: \${{ secrets.OPENROUTER_API_KEY }}`;
+
+const exampleComment = `## glue-review
+
+SQL injection in /links/{short_id}/stats — short_id is f-stringed into raw SQL.
+
+- **critical** — app/routes.py:88 — short_id is interpolated into a raw SQL WHERE clause; \`' OR '1'='1\` leaks every non-deleted row.
+- **medium** — app/routes.py:46–57 — fresh in-memory SQLite DB on every call; O(n) per invocation for a simple LIKE filter.
+
+---
+
+### Fix instructions — paste into your coding agent
+
+\`\`\`markdown
+Fix the following in this PR before merging.
+
+1. **app/routes.py:88** — /links/{short_id}/stats interpolates a
+   user-controlled path parameter directly into a SQL string.
+   - Replace the f-string with a parameterised query:
+     db.execute(text("... WHERE short_id = :sid AND deleted_at IS NULL"),
+                {"sid": short_id})
+   Acceptance: pytest tests/test_stats.py::test_stats_rejects_sql_metacharacters
+\`\`\``;
+
+const forkSnippet = `// agents/my-reviewer/prompt.go
+import _ "embed"
+
+//go:embed prompts/default.md
+var systemPrompt string
+
+// agents/my-reviewer/prompts/default.md
+//   "You are a security-focused PR reviewer. Only flag SQL injection,
+//    XSS, missing auth, and secret-in-diff issues. ..."
+`;
+---
+<Base title={title} description={description}>
+  <section class="border-b border-line bg-paper">
+    <div class="max-w-3xl mx-auto px-6 pt-20 pb-16 sm:pt-28 sm:pb-20">
+      <div class="inline-flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent-strong mb-7">
+        <span class="size-1.5 rounded-full bg-accent"></span>
+        Open source · MIT · runs on your key
+      </div>
+      <h1 class="text-4xl sm:text-5xl font-semibold tracking-tight text-ink leading-[1.1] mb-6">
+        AI code review,
+        <br class="hidden sm:block" />
+        <span class="text-accent">for AI coding agents.</span>
+      </h1>
+      <p class="text-lg sm:text-xl text-ink-soft leading-relaxed max-w-2xl mb-10">
+        <strong class="text-ink font-medium">glue-review</strong> posts one
+        GitHub comment per PR — a short headline, severity bullets, and a
+        paste-ready fix block your coding agent
+        <span class="whitespace-nowrap">(Claude Code, Codex, Cursor, Aider, …)</span>
+        applies in one step.
+      </p>
+      <div class="flex flex-wrap items-center gap-3 mb-12">
+        <a
+          href="#install"
+          class="inline-flex items-center gap-2 rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-strong transition-colors"
+        >
+          Install in 2 minutes
+          <span aria-hidden="true">→</span>
+        </a>
+        <a
+          href="https://github.com/erain/glue/tree/main/agents/glue-review"
+          class="inline-flex items-center gap-2 rounded-md border border-line px-4 py-2.5 text-sm font-medium text-ink-soft hover:text-ink hover:border-ink-soft transition-colors"
+          rel="noopener"
+        >
+          View on GitHub
+        </a>
+      </div>
+      <div class="text-xs text-ink-muted tracking-wide">
+        Free with an
+        <a href="https://openrouter.ai" class="underline underline-offset-2 hover:text-ink-soft" rel="noopener">OpenRouter</a>
+        key · also works with NVIDIA build.nvidia.com and Gemini · zero platform fee
+      </div>
+    </div>
+  </section>
+
+  <Section num="01" id="problem" eyebrow="The problem" title="PR review was written for humans skimming sections.">
+    <p>
+      Existing review tools — bots and humans alike — produce prose. A
+      <em>Summary</em>, an <em>Issues</em> list, a
+      <em>Suggestions</em> list, an <em>Open questions</em> list. Great for
+      a developer paging through Friday-afternoon PRs. Terrible for the AI
+      coding agent that&rsquo;s actually going to apply the fix.
+    </p>
+    <p>
+      Coding agents like Claude Code, Codex, Cursor, Aider, Cline, Gemini
+      CLI, and OpenCode are good at <em>following structured directives</em>.
+      They&rsquo;re less good at parsing English to figure out what the
+      reviewer meant. Give them a paragraph and they ask three clarifying
+      questions. Give them a numbered list with file:line refs and a
+      one-line acceptance check, and they just do the thing.
+    </p>
+    <p>
+      <strong>glue-review&rsquo;s output is shaped to be the input of the
+      next agent in the loop.</strong> One comment, scannable by humans on
+      top, paste-ready by agents on the bottom.
+    </p>
+  </Section>
+
+  <Section num="02" id="output" tone="soft" eyebrow="What you get" title="One comment. A headline, severity bullets, and a paste-ready fix block.">
+    <p>
+      Every PR opened against your repo gets exactly one sticky comment.
+      Re-runs update in place; a transient upstream rate-limit never
+      overwrites a previous good review.
+    </p>
+    <pre><code>{exampleComment}</code></pre>
+    <p>
+      The fenced <code>```markdown</code> block at the bottom is the
+      product. A real coding agent reads it, applies the change, and the
+      acceptance check closes the loop. When there&rsquo;s no real finding,
+      the comment is just <code>No concerns — LGTM.</code> with no fix
+      block. When the <em>approach</em> is wrong, a third variant —
+      <strong>Pushback on approach</strong> — emits a design-level rebuttal
+      with a redirection block instead of per-line tweaks.
+    </p>
+  </Section>
+
+  <Section num="03" id="install" eyebrow="Install" title="Two minutes.">
+    <p>
+      Drop one workflow file in your repo and add a free
+      <a href="https://openrouter.ai" rel="noopener">OpenRouter</a> key as
+      <code>OPENROUTER_API_KEY</code>:
+    </p>
+    <pre><code>{installSnippet}</code></pre>
+    <p>
+      That&rsquo;s it. The next PR you open gets a review comment. Want a
+      different provider? Pass <code>provider: nvidia</code> with
+      <code>nvidia-api-key</code> for
+      <a href="https://build.nvidia.com" rel="noopener">build.nvidia.com</a>&rsquo;s
+      free tier, or <code>provider: gemini</code> with
+      <code>gemini-api-key</code> for Google&rsquo;s. Chain them
+      (<code>provider: openrouter,nvidia,gemini</code>) for free-tier
+      reliability — the action walks the chain, first one with a working key
+      wins.
+    </p>
+    <p>
+      Fork PRs need a second workflow triggered by a maintainer typing
+      <code>/glue-review</code>, since GitHub doesn&rsquo;t pass secrets to
+      <code>pull_request</code> runs from forks. The
+      <a href="https://github.com/erain/glue/tree/main/agents/glue-review" rel="noopener">README</a>
+      has the snippet.
+    </p>
+  </Section>
+
+  <Section num="04" id="byo" tone="soft" eyebrow="Open by default" title="Your key. Your provider. Your code never leaves the loop.">
+    <p>
+      glue-review has no backend. Nothing to sign up for. No bot account to
+      authorise on your repo. No quota you can hit. The action runs entirely
+      inside <strong>your</strong> GitHub Actions runner, talks directly to
+      <strong>your</strong> LLM provider with <strong>your</strong> key, and
+      posts the comment with <strong>your</strong> workflow&rsquo;s
+      <code>GITHUB_TOKEN</code>.
+    </p>
+    <div class="grid sm:grid-cols-3 gap-4 my-7 not-prose">
+      <div class="rounded-lg border border-line bg-paper p-5">
+        <div class="text-xs uppercase tracking-wider text-ink-muted mb-1">Default</div>
+        <div class="font-medium text-ink mb-1">OpenRouter</div>
+        <div class="text-sm text-ink-soft"><code>ring-2.6-1t:free</code> — $0 per PR, ~20 req/min ceiling. The free tier the eval runs against.</div>
+      </div>
+      <div class="rounded-lg border border-line bg-paper p-5">
+        <div class="text-xs uppercase tracking-wider text-ink-muted mb-1">Free dev tier</div>
+        <div class="font-medium text-ink mb-1">NVIDIA build.nvidia.com</div>
+        <div class="text-sm text-ink-soft"><code>moonshotai/kimi-k2.6</code> by default. Free with sign-up, generous rate limits.</div>
+      </div>
+      <div class="rounded-lg border border-line bg-paper p-5">
+        <div class="text-xs uppercase tracking-wider text-ink-muted mb-1">Free tier exists</div>
+        <div class="font-medium text-ink mb-1">Google Gemini</div>
+        <div class="text-sm text-ink-soft"><code>gemini-2.5-flash</code>. Drop in by setting <code>gemini-api-key</code>.</div>
+      </div>
+    </div>
+    <p>
+      Want higher rate limits or a stronger model? Pay your provider
+      directly for a paid key and the action picks it up unchanged. There
+      is no platform fee, no per-seat pricing, no &ldquo;contact
+      sales&rdquo; page. Open source under MIT, and the agent itself is
+      ~300 LOC of Go you can audit in an afternoon.
+    </p>
+  </Section>
+
+  <Section num="05" id="evidence" eyebrow="Evidence" title="Measured against a 28-case planted-bug eval.">
+    <p>
+      The prompt isn&rsquo;t vibes. It&rsquo;s the result of iterating
+      against a 28-case planted-bug suite at
+      <a href="https://github.com/erain/glue-review-eval" rel="noopener">erain/glue-review-eval</a>
+      — Go, Python, and TypeScript host projects with SQL injection,
+      missing auth, off-by-one, missing tests, stale docs, rejected-
+      direction refactors, multi-bug PRs, and clean PRs. Every case ships
+      a YAML sidecar with the planted bug, expected findings, and a
+      machine-checkable acceptance test. Scored against
+      <code>openrouter/inclusionai/ring-2.6-1t:free</code> — the free path
+      the install snippet above uses.
+    </p>
+    <div class="overflow-x-auto not-prose my-7">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="border-b border-line text-ink-muted text-xs uppercase tracking-wider">
+            <th class="text-left font-medium py-3 pr-4">Signal</th>
+            <th class="text-right font-medium py-3 px-4">Initial</th>
+            <th class="text-right font-medium py-3 px-4">Current</th>
+            <th class="text-right font-medium py-3 pl-4">Delta</th>
+          </tr>
+        </thead>
+        <tbody class="text-ink-soft">
+          <tr class="border-b border-line">
+            <td class="py-3 pr-4"><code>has_fix_block</code> <span class="text-ink-muted">— fenced ```markdown after Fix instructions</span></td>
+            <td class="text-right py-3 px-4 font-mono">0.11</td>
+            <td class="text-right py-3 px-4 font-mono text-ink font-medium">0.82</td>
+            <td class="text-right py-3 pl-4 font-mono text-accent font-medium">+70.4pp</td>
+          </tr>
+          <tr class="border-b border-line">
+            <td class="py-3 pr-4"><code>no_false_positives</code></td>
+            <td class="text-right py-3 px-4 font-mono">0.96</td>
+            <td class="text-right py-3 px-4 font-mono text-ink font-medium">1.00</td>
+            <td class="text-right py-3 pl-4 font-mono text-accent font-medium">+3.7pp</td>
+          </tr>
+          <tr class="border-b border-line">
+            <td class="py-3 pr-4"><code>flagged_file</code></td>
+            <td class="text-right py-3 px-4 font-mono">0.93</td>
+            <td class="text-right py-3 px-4 font-mono">0.85</td>
+            <td class="text-right py-3 pl-4 font-mono text-ink-muted">−7.4pp</td>
+          </tr>
+          <tr>
+            <td class="py-3 pr-4"><code>flagged_concept</code></td>
+            <td class="text-right py-3 px-4 font-mono">0.90</td>
+            <td class="text-right py-3 px-4 font-mono">0.86</td>
+            <td class="text-right py-3 pl-4 font-mono text-ink-muted">−4.0pp</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      <code>has_fix_block</code> is the product-shaping metric: does the
+      comment carry a fenced markdown block downstream coding agents can
+      paste? It went from <em>essentially never</em> to
+      <strong>82%</strong>, with <strong>zero invented findings</strong>.
+      The recall regressions are the price of a tighter format — the model
+      spends some of its turn budget on the structural rubric.
+    </p>
+    <p>
+      <strong>Downstream-fix success</strong> — the closer-to-truth product
+      KPI — is measured by piping the fix block into
+      <code>codex exec</code> in a fresh sandbox and checking whether the
+      planted-bug acceptance test transitions red&nbsp;→&nbsp;green.
+      <strong>6 of 8 = 75%</strong> on cases where the agent produced a fix
+      block and the executor didn&rsquo;t error mid-run. Per-case
+      breakdown, methodology, and repro instructions in
+      <a href="https://github.com/erain/glue-review-eval/blob/main/results/FINAL_REPORT.md" rel="noopener">the final report</a>.
+    </p>
+  </Section>
+
+  <Section num="06" id="framework" eyebrow="Built on glue" title="The first agent on a small Go harness, not a one-off.">
+    <p>
+      glue-review is ~300 LOC of Go on top of
+      <a href="https://github.com/erain/glue" rel="noopener">glue</a> — a
+      minimal agent framework: provider-agnostic loop with deterministic
+      tool execution, file-backed sessions, an embedded prompt catalog, a
+      tool registry, and a multi-provider failover that walks
+      <code>openrouter,nvidia,gemini</code> until one responds. The library
+      is pre-1.0 but the <code>Agent</code> / <code>Session</code> surface
+      has been stable in practice.
+    </p>
+    <p>
+      Want a security-focused / performance-focused / docs-focused reviewer
+      instead? Fork <code>agents/glue-review/main.go</code>, swap the
+      embedded prompt, ship it as your own Action:
+    </p>
+    <pre><code>{forkSnippet}</code></pre>
+    <p>
+      Same provider failover, same session machinery, same composite Action
+      template. The product surface — one comment per PR, fenced markdown
+      fix block — is just one prompt away.
+    </p>
+  </Section>
+
+  <Section num="07" id="faq" tone="soft" eyebrow="FAQ" title="Anticipated skepticism.">
+    <div class="space-y-7 mt-2">
+      <div>
+        <h3 class="font-medium text-ink mb-2">Why one comment instead of inline?</h3>
+        <p>
+          Inline comments scatter intent across the diff. Coding agents have
+          to gather them, deduplicate, and re-order before they can act. A
+          single comment with a numbered fix-block lets the agent paste once
+          and execute in order. Humans get the headline and severity bullets
+          at the top of the same comment — best of both shapes.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-medium text-ink mb-2">Free models can&rsquo;t be that good, can they?</h3>
+        <p>
+          The default model
+          (<code>inclusionai/ring-2.6-1t:free</code> on OpenRouter)
+          identified SQL injection, missing auth, off-by-ones, and stale
+          docs at human-reviewer level in the eval. Where it struggles is
+          subjective design questions and large refactor PRs — same as
+          everyone. If a free tier 429s mid-batch, glue-review falls back
+          to your next provider in the chain without dropping the comment.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-medium text-ink mb-2">Does the agent see my source code? Where does it run?</h3>
+        <p>
+          It runs inside your repo&rsquo;s GitHub Actions runner, on a
+          throwaway VM that GitHub provisions per workflow. It reads your
+          diff plus the files the model decides to fetch — gated by a
+          built-in blocklist that refuses to open
+          <code>.env*</code>, <code>id_rsa*</code>, <code>*.pem</code>,
+          <code>*.key</code>, <code>credentials.json</code>,
+          <code>secret.*</code>, and <code>.aws</code> /
+          <code>.gcloud</code> / <code>.azure</code> paths (extendable,
+          can&rsquo;t be shrunk). The model sees only what the runner sends;
+          we never proxy or log anything.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-medium text-ink mb-2">Does it work on fork PRs?</h3>
+        <p>
+          Yes, with a second workflow triggered by a maintainer typing
+          <code>/glue-review</code> on the PR. That workflow runs in the
+          base-repo context with full secret access, fires only for
+          <code>OWNER</code> / <code>MEMBER</code> / <code>COLLABORATOR</code>
+          comments, and pins the head SHA at trigger time so a fork
+          can&rsquo;t swap code into the run. Both snippets are in the README.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-medium text-ink mb-2">Will the comment shape change under me?</h3>
+        <p>
+          No. The shape is the product. Anything we change in the prompt
+          gets measured against the eval suite before it lands; anything
+          that regresses the headline metric doesn&rsquo;t ship. Pin
+          <code>@main</code> for the rolling latest, or pin a specific
+          commit SHA if you want it frozen.
+        </p>
+      </div>
+      <div>
+        <h3 class="font-medium text-ink mb-2">Can I customise what it looks for?</h3>
+        <p>
+          Yes — pass <code>prompt:</code> to the Action input (or
+          <code>--prompt</code> on the CLI) to override the user message:
+          <em>&ldquo;only check for SQL injection&rdquo;</em>,
+          <em>&ldquo;only review the migration files&rdquo;</em>,
+          <em>&ldquo;flag any new dependency without a version pin&rdquo;</em>.
+          For a deeper change — different output shape, domain-specific
+          checklist — fork the agent (§06).
+        </p>
+      </div>
+    </div>
+  </Section>
+
+  <section class="border-b border-line">
+    <div class="max-w-3xl mx-auto px-6 py-20 text-center">
+      <h2 class="text-2xl sm:text-3xl font-semibold tracking-tight text-ink mb-4">
+        One comment. Paste-ready. On your key.
+      </h2>
+      <p class="text-ink-soft mb-8">
+        Two minutes to install. The next PR you open gets reviewed.
+      </p>
+      <a
+        href="#install"
+        class="inline-flex items-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-medium text-white hover:bg-accent-strong transition-colors"
+      >
+        Install in 2 minutes
+        <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
+</Base>
