@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>og</title>
+  <style>
+    :root {
+      --ink: #0f172a;
+      --ink-soft: #475569;
+      --ink-muted: #94a3b8;
+      --line: #e2e8f0;
+      --line-soft: #f1f5f9;
+      --paper: #ffffff;
+      --accent: #6d28d9;
+      --accent-soft: #ede9fe;
+      --accent-strong: #5b21b6;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      width: 1200px;
+      height: 630px;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Inter", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overflow: hidden;
+    }
+    .card {
+      width: 100%;
+      height: 100%;
+      padding: 64px 72px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      position: relative;
+    }
+    .corner {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle at top right, rgba(109, 40, 217, 0.10), transparent 70%);
+      pointer-events: none;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 9999px;
+    }
+    .pill .dot {
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+      border-radius: 9999px;
+    }
+    h1 {
+      font-size: 76px;
+      line-height: 1.05;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      margin: 28px 0 0;
+      color: var(--ink);
+    }
+    h1 .accent { color: var(--accent); }
+    .lede {
+      margin-top: 28px;
+      font-size: 26px;
+      line-height: 1.4;
+      color: var(--ink-soft);
+      max-width: 920px;
+    }
+    .lede strong { color: var(--ink); font-weight: 600; }
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+    }
+    .mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--accent);
+      display: grid;
+      place-items: center;
+      color: white;
+      font-family: ui-monospace, "JetBrains Mono", monospace;
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .meta {
+      font-size: 18px;
+      color: var(--ink-muted);
+      font-family: ui-monospace, "JetBrains Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="corner"></div>
+    <div>
+      <div class="pill"><span class="dot"></span>Open source · runs on your key</div>
+      <h1>
+        AI code review,<br>
+        <span class="accent">for AI coding agents.</span>
+      </h1>
+      <div class="lede">
+        One GitHub comment per PR — a short headline, severity bullets, and a
+        paste-ready fix block your coding agent applies in one step.
+      </div>
+    </div>
+    <div></div>
+    <div class="row">
+      <div class="brand">
+        <div class="mark">{ }</div>
+        <span>glue-review</span>
+      </div>
+      <div class="meta">github.com/erain/glue</div>
+    </div>
+  </div>
+</body>
+</html>

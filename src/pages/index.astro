@@ -28,28 +28,6 @@ jobs:
         with:
           openrouter-api-key: \${{ secrets.OPENROUTER_API_KEY }}`;
 
-const exampleComment = `## glue-review
-
-SQL injection in /links/{short_id}/stats — short_id is f-stringed into raw SQL.
-
-- **critical** — app/routes.py:88 — short_id is interpolated into a raw SQL WHERE clause; \`' OR '1'='1\` leaks every non-deleted row.
-- **medium** — app/routes.py:46–57 — fresh in-memory SQLite DB on every call; O(n) per invocation for a simple LIKE filter.
-
----
-
-### Fix instructions — paste into your coding agent
-
-\`\`\`markdown
-Fix the following in this PR before merging.
-
-1. **app/routes.py:88** — /links/{short_id}/stats interpolates a
-   user-controlled path parameter directly into a SQL string.
-   - Replace the f-string with a parameterised query:
-     db.execute(text("... WHERE short_id = :sid AND deleted_at IS NULL"),
-                {"sid": short_id})
-   Acceptance: pytest tests/test_stats.py::test_stats_rejects_sql_metacharacters
-\`\`\``;
-
 const forkSnippet = `// agents/my-reviewer/prompt.go
 import _ "embed"
 
@@ -133,7 +111,27 @@ var systemPrompt string
       Re-runs update in place; a transient upstream rate-limit never
       overwrites a previous good review.
     </p>
-    <pre><code>{exampleComment}</code></pre>
+    <figure class="not-prose my-8">
+      <a
+        href="https://github.com/erain/glue-review-eval/pull/1#issuecomment-4446926353"
+        target="_blank"
+        rel="noopener"
+        class="block rounded-xl border border-line bg-paper overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+      >
+        <img
+          src="/img/smoke-comment.png"
+          alt="A real glue-review comment on a GitHub PR: SQL injection flagged with three severity bullets and a fenced markdown fix block."
+          width="808"
+          height="682"
+          loading="lazy"
+          decoding="async"
+          class="w-full h-auto block"
+        />
+      </a>
+      <figcaption class="text-xs text-ink-muted mt-3 text-center">
+        Live comment from <a href="https://github.com/erain/glue-review-eval/pull/1" rel="noopener" class="underline underline-offset-2 hover:text-ink-soft">the smoke PR</a>. The action posts; the comment is what your coding agent reads.
+      </figcaption>
+    </figure>
     <p>
       The fenced <code>```markdown</code> block at the bottom is the
       product. A real coding agent reads it, applies the change, and the
